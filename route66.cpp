@@ -7,6 +7,7 @@
 #include <functional>
 #include <string>
 #include <map>
+#include <sstream>
 
 #include "route66.hpp"
 
@@ -108,7 +109,7 @@ std::string mime::json() { return "Content-Type: application/json; charset=utf-8
 
 struct daemon {
     const int socket;
-    const std::map< std::string /*path*/, std::function<void(route66::request &request)> /*fn*/ > *routers;
+    const std::map< std::string /*path*/, route66::callback /*fn*/ > *routers;
 
     void operator()() {
         bool shutdown = false;
@@ -165,24 +166,24 @@ struct daemon {
                     rq.path = path;
                     rq.options = options;
                     // @todo : arguments
-                    rq.shutdown = [&]() {
-                        shutdown = true;
-                    };
-                    rq.answer = [&]( unsigned httpcode, const std::string &headers, const std::string &content ) {
-                        std::string head = std::string("HTTP/1.1 ") + std::to_string(httpcode) + " OK\r\n";
-                        std::string heading = headers +
-                            "Content-Length: " + std::to_string( content.size() ) + "\r\n"
-                            "\r\n";
-
-                        WRITE( child, head.c_str(), head.size() );
-                        WRITE( child, heading.c_str(), heading.size() );
-                        WRITE( child, content.c_str(), content.size() );
-
-                        return true;
-                    };
 
                     auto &fn = found->second;
-                    fn( rq );
+                    std::stringstream headers, contents;
+                    int httpcode = fn( rq, headers, contents );
+
+                    std::string datas = contents.str();
+                    shutdown = ( 0 == httpcode ? true : false );
+
+                    if( !shutdown && datas.size() ) {
+                        std::string head1 = std::string("HTTP/1.1 ") + std::to_string(httpcode) + " OK\r\n";
+                        std::string head2 = headers.str() +
+                            "Content-Length: " + std::to_string( datas.size() ) + "\r\n"
+                            "\r\n";
+
+                        WRITE( child, head1.c_str(), head1.size() );
+                        WRITE( child, head2.c_str(), head2.size() );
+                        WRITE( child, datas.c_str(), datas.size() );
+                    }
                 }
 
                 SHUTDOWN(child);
@@ -192,8 +193,8 @@ struct daemon {
     }
 };
 
-bool create( unsigned port, const std::string &path, const std::function<void(route66::request &request)> &fn ) {
-    using routers = std::map< std::string /*path*/, std::function<void(route66::request &request)> /*fn */>;
+bool create( unsigned port, const std::string &path, const route66::callback &fn ) {
+    using routers = std::map< std::string /*path*/, route66::callback /*fn */>;
     static std::map< unsigned, routers > daemons;
 
     if( daemons.find(port) == daemons.end() ) {
@@ -220,5 +221,55 @@ bool create( unsigned port, const std::string &path, const std::function<void(ro
     daemons[ port ][ path ] = fn;
     return "ok", true;
 }
+
+#undef SHUTDOWN
+
+/*/ 1XX informational
+/*/ httpcode SHUTDOWN(){ return httpcode { 0, "Shutdown requested" }; }
+/*/ 1XX informational
+/*/ httpcode CONTINUE(){ return httpcode { 100, "The request can be continued." }; } /*/
+/*/ httpcode SWITCH_PROTOCOLS(){ return httpcode { 101, "The server has switched protocols in an upgrade header." }; }
+/*/ 2XX success
+/*/ httpcode OK(){ return httpcode { 200, "The request completed successfully." }; } /*/
+/*/ httpcode CREATED(){ return httpcode { 201, "The request has been fulfilled and resulted in the creation of a new resource." }; } /*/
+/*/ httpcode ACCEPTED(){ return httpcode { 202, "The request has been accepted for processing, but the processing has not been completed." }; } /*/
+/*/ httpcode PARTIAL(){ return httpcode { 203, "The returned meta information in the entity-header is not the definitive set available from the originating server." }; } /*/
+/*/ httpcode NO_CONTENT(){ return httpcode { 204, "The server has fulfilled the request, but there is no new information to send back." }; } /*/
+/*/ httpcode RESET_CONTENT(){ return httpcode { 205, "The request has been completed, and the client program should reset the document view that caused the request to be sent to allow the user to easily initiate another input action." }; } /*/
+/*/ httpcode PARTIAL_CONTENT(){ return httpcode { 206, "The server has fulfilled the partial GET request for the resource." }; } /*/
+/*/ httpcode WEBDAV_MULTI_STATUS(){ return httpcode { 207, "During a World Wide Web Distributed Authoring and Versioning (WebDAV) operation, this indicates multiple status httpcodes for a single response. The response body contains Extensible Markup Language (XML) that describes the status httpcodes. For more information, see HTTP Extensions for Distributed Authoring." }; }
+/*/ 3XX redirection
+/*/ httpcode AMBIGUOUS(){ return httpcode { 300, "The requested resource is available at one or more locations." }; } /*/
+/*/ httpcode MOVED(){ return httpcode { 301, "The requested resource has been assigned to a new permanent Uniform Resource Identifier (URI), and any future references to this resource should be done using one of the returned URIs." }; } /*/
+/*/ httpcode REDIRECT(){ return httpcode { 302, "The requested resource resides temporarily under a different URI." }; } /*/
+/*/ httpcode REDIRECT_METHOD(){ return httpcode { 303, "The response to the request can be found under a different URI and should be retrieved using a GET HTTP verb on that resource." }; } /*/
+/*/ httpcode NOT_MODIFIED(){ return httpcode { 304, "The requested resource has not been modified." }; } /*/
+/*/ httpcode USE_PROXY(){ return httpcode { 305, "The requested resource must be accessed through the proxy given by the location field." }; } /*/
+/*/ httpcode REDIRECT_KEEP_VERB(){ return httpcode { 307, "The redirected request keeps the same HTTP verb. HTTP/1.1 behavior." }; }
+/*/ 4XX client's fault
+/*/ httpcode BAD_REQUEST(){ return httpcode { 400, "The request could not be processed by the server due to invalid syntax." }; } /*/
+/*/ httpcode DENIED(){ return httpcode { 401, "The requested resource requires user authentication." }; } /*/
+/*/ httpcode PAYMENT_REQ(){ return httpcode { 402, "Not implemented in the HTTP protocol." }; } /*/
+/*/ httpcode FORBIDDEN(){ return httpcode { 403, "The server understood the request, but cannot fulfill it." }; } /*/
+/*/ httpcode NOT_FOUND(){ return httpcode { 404, "The server has not found anything that matches the requested URI." }; } /*/
+/*/ httpcode BAD_METHOD(){ return httpcode { 405, "The HTTP verb used is not allowed." }; } /*/
+/*/ httpcode NONE_ACCEPTABLE(){ return httpcode { 406, "No responses acceptable to the client were found." }; } /*/
+/*/ httpcode PROXY_AUTH_REQ(){ return httpcode { 407, "Proxy authentication required." }; } /*/
+/*/ httpcode REQUEST_TIMEOUT(){ return httpcode { 408, "The server timed out waiting for the request." }; } /*/
+/*/ httpcode CONFLICT(){ return httpcode { 409, "The request could not be completed due to a conflict with the current state of the resource. The user should resubmit with more information." }; } /*/
+/*/ httpcode GONE(){ return httpcode { 410, "The requested resource is no longer available at the server, and no forwarding address is known." }; } /*/
+/*/ httpcode LENGTH_REQUIRED(){ return httpcode { 411, "The server cannot accept the request without a defined content length." }; } /*/
+/*/ httpcode PRECOND_FAILED(){ return httpcode { 412, "The precondition given in one or more of the request header fields evaluated to false when it was tested on the server." }; } /*/
+/*/ httpcode REQUEST_TOO_LARGE(){ return httpcode { 413, "The server cannot process the request because the request entity is larger than the server is able to process." }; } /*/
+/*/ httpcode URI_TOO_LONG(){ return httpcode { 414, "The server cannot service the request because the request URI is longer than the server can interpret." }; } /*/
+/*/ httpcode UNSUPPORTED_MEDIA(){ return httpcode { 415, "The server cannot service the request because the entity of the request is in a format not supported by the requested resource for the requested method." }; } /*/
+/*/ httpcode RETRY_WITH(){ return httpcode { 449, "The request should be retried after doing the appropriate action." }; }
+/*/ 5XX server's fault
+/*/ httpcode SERVER_ERROR(){ return httpcode { 500, "The server encountered an unexpected condition that prevented it from fulfilling the request." }; } /*/
+/*/ httpcode NOT_SUPPORTED(){ return httpcode { 501, "The server does not support the functionality required to fulfill the request." }; } /*/
+/*/ httpcode BAD_GATEWAY(){ return httpcode { 502, "The server, while acting as a gateway or proxy, received an invalid response from the upstream server it accessed in attempting to fulfill the request." }; } /*/
+/*/ httpcode SERVICE_UNAVAIL(){ return httpcode { 503, "The service is temporarily overloaded." }; } /*/
+/*/ httpcode GATEWAY_TIMEOUT(){ return httpcode { 504, "The request was timed out waiting for a gateway." }; } /*/
+/*/ httpcode VERSION_NOT_SUP(){ return httpcode { 505, "The server does not support the HTTP protocol version that was used in the request message." }; }
 
 }

@@ -1,16 +1,3 @@
-route66
-=======
-
-- Route66 is a lightweight embeddable HTTP server. Written in C++11.
-- Route66 is tiny. One header and one source file.
-- Route66 is cross-platform.
-- Route66 is MIT licensed.
-
-### API
-take a look into [route66.hpp header](route66.hpp)
-
-### sample
-```c++
 #include <cassert>
 #include <iostream>
 #include "route66.hpp"
@@ -51,4 +38,3 @@ int main() {
     for( char ch ; std::cin >> ch ; )
     {}
 }
-```
