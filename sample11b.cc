@@ -7,20 +7,20 @@ extern std::string html_template;
 int main()
 {
     // add a web server, with stats in ajax
-    route66::create( 8080, "/stats",
+    route66::create( 8080, "GET /stats",
         []( route66::request &req, std::ostream &headers, std::ostream &content ) {
             int CPUloading = rand() % 100;
             int CPUcore = CPUloading - 30 < 0 ? 0 : rand() % (CPUloading - 30);
             double Disk = rand() % 50 + 50;
 
-            headers << "Content-Type: application/json\r\n";
+            headers << route66::mime(".json");
             content << "{\"cpu\":" << CPUloading << ", \"core\":" << CPUcore << ", \"disk\":" << Disk << "}" << std::endl;
             return 200;
         } );
 
-    route66::create( 8080, "/",
+    route66::create( 8080, "GET /",
         []( route66::request &req, std::ostream &headers, std::ostream &content ) {
-            headers << "Content-Type: text/html;charset=UTF-8\r\n";
+            headers << route66::mime(".html");
             content << html_template << "url: " << req.url << std::endl;
             return 200;
         } );
@@ -39,7 +39,7 @@ std::string html_template = $quote(
 <html>
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-    <title>{TITLE}</title>
+    <title>sample #2</title>
 
 <script type="text/javascript" src="http://www.jqueryflottutorial.com/js/lib/jquery-1.8.3.min.js"></script>
 <!--[if lte IE 8]><script language="javascript" type="text/javascript" src="http://www.jqueryflottutorial.com/js/flot/excanvas.min.js"></script><![endif]-->
