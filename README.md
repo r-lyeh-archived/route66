@@ -10,9 +10,9 @@ route66
 ### API
 take a look into [route66.hpp header](route66.hpp)
 
-### environment
-- Tweak `R66LOG` environment variable to filter and display any incoming http request in runtime
-- Wildcards are allowed. Ie, `*GET *`, `* /index?*`, `*192.168.*`, etc...
+### Debugging
+- Tweak `R66LOG` environment variable to filter and display any incoming http request in runtime.
+- Requests matching wildcard patterns will be printed. Ie, `*/*.html*`, `*POST /form?*`, `*192.168.*`, etc...
 
 ### sample
 ```c++
