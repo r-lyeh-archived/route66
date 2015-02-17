@@ -9,6 +9,21 @@
 #   include <ws2tcpip.h>
 #   include <windows.h>
 
+#   ifndef _MSC_VER
+    static
+    const char* inet_ntop(int af, const void* src, char* dst, int cnt){
+        struct sockaddr_in srcaddr;
+        memset(&srcaddr, 0, sizeof(struct sockaddr_in));
+        memcpy(&(srcaddr.sin_addr), src, sizeof(srcaddr.sin_addr));
+        srcaddr.sin_family = af;
+        if (WSAAddressToString((struct sockaddr*) &srcaddr, sizeof(struct sockaddr_in), 0, dst, (LPDWORD) &cnt) != 0) {
+            DWORD rv = WSAGetLastError();
+            return NULL;
+        }
+        return dst;
+    }
+#   endif
+
 #   pragma comment(lib,"ws2_32.lib")
 
 #   define INIT()                    do { static WSADATA wsa_data; static const int init = WSAStartup( MAKEWORD(2, 2), &wsa_data ); } while(0)
@@ -68,7 +83,7 @@
 #   include <netdb.h>
 #   include <unistd.h>    //close
 
-#   include <arpa/inet.h> //inet_addr
+#   include <arpa/inet.h> //inet_addr, inet_ntop
 
 #   define INIT()                    do {} while(0)
 #   define SOCKET(A,B,C)             ::socket((A),(B),(C))
@@ -93,7 +108,8 @@
 
 
 #include <cstdlib>
-#include <cstdio>
+#include <cstring>
+#include <limits.h>
 
 #include <fstream>
 #include <map>
@@ -102,7 +118,6 @@
 #include <vector>
 
 #include "route66.hpp"
-
 
 namespace {
     // http://stackoverflow.com/questions/2673207/c-c-url-decode-library
@@ -385,7 +400,7 @@ struct daemon {
                 getpeername(child, (struct sockaddr*) &addr, &len);
                 struct sockaddr_in *s = (struct sockaddr_in *) &addr;
                 inet_ntop(AF_INET, &s->sin_addr, ipstr, sizeof ipstr);
-                if( strcmp("127.0.0.1", ipstr) == 0 ) rq.ip = "localhost";
+                if( std::strcmp("127.0.0.1", ipstr) == 0 ) rq.ip = "localhost";
                 else rq.ip = ipstr;
 
                 struct sockaddr_in l;
@@ -506,7 +521,7 @@ namespace {
             }
 
             struct sockaddr_in l;
-            memset( &l, 0, sizeof(sockaddr_in) );
+            std::memset( &l, 0, sizeof(sockaddr_in) );
             l.sin_family = AF_INET;
             l.sin_port = htons(port);
             l.sin_addr.s_addr = INADDR_ANY;
