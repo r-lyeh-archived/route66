@@ -1,4 +1,4 @@
-route66
+route66 <a href="https://travis-ci.org/r-lyeh/route66"><img src="https://api.travis-ci.org/r-lyeh/route66.svg?branch=master" align="right" /></a>
 =======
 
 - Route66 is a lightweight embeddable HTTP server. Written in C++11 (or C++03 w/boost).
