@@ -5,7 +5,7 @@ route66 <a href="https://travis-ci.org/r-lyeh/route66"><img src="https://api.tra
 - Route66 is handy. Support for [CRUD](http://en.wikipedia.org/wiki/Create,_read,_update_and_delete), [MIME](http://en.wikipedia.org/wiki/Internet_media_type) and wildcard routing.
 - Route66 is tiny. One header and one source file.
 - Route66 is cross-platform.
-- Route66 is BOOST licensed.
+- Route66 is zlib/libpng licensed.
 
 ### API
 take a look into [route66.hpp header](route66.hpp)

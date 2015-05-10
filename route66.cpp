@@ -1,5 +1,5 @@
 // lightweight http server
-// - rlyeh, BOOST licensed. based on code by Ivan Tikhonov (zlib licensed)
+// - rlyeh, zlib/libpng licensed. based on code by Ivan Tikhonov (zlib licensed)
 
 // Sockets, taken from https://github.com/r-lyeh/knot
 

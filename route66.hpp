@@ -1,5 +1,5 @@
 // lightweight http server
-// - rlyeh, BOOST licensed. based on code by Ivan Tikhonov (zlib licensed)
+// - rlyeh, zlib/libpng licensed. based on code by Ivan Tikhonov (zlib licensed)
 
 /**/// <-- remove an asterisk in a code editor to highlight API
 
